@@ -1,4 +1,4 @@
-import { useJobs, useCreateJob, useCustomers, useUpdateJob, useDeleteJob } from "@/hooks/use-business-data";
+import { useJobs, useCreateJob, useUpdateJob, useDeleteJob, useCustomers, useCustomCategories, useCreateCustomCategory } from "@/hooks/use-business-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -131,7 +131,9 @@ export default function JobsPage() {
   const [viewingJob, setViewingJob] = useState<any>(null);
   const [customCategory, setCustomCategory] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
-  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const { data: savedCustomCats } = useCustomCategories("jobs");
+  const addCustomCategory = useCreateCustomCategory();
+  const categories = [...DEFAULT_CATEGORIES, ...(savedCustomCats?.map(c => c.name) || [])];
   const [selectedJobForGallery, setSelectedJobForGallery] = useState<any>(null);
 
   const form = useForm<FormValues>({
@@ -181,12 +183,15 @@ export default function JobsPage() {
 
   const handleAddCustomCategory = () => {
     if (customCategory && !categories.includes(customCategory)) {
-      setCategories(prev => [...prev, customCategory]);
-      form.setValue("category", customCategory);
-      setCustomCategory("");
-      setShowCustomInput(false);
+      addCustomCategory.mutate({ type: "jobs", name: customCategory }, {
+        onSuccess: () => {
+          form.setValue("category", customCategory);
+          setCustomCategory("");
+          setShowCustomInput(false);
+        }
+      });
     }
-  };
+  };;
 
   const handleView = (job: any) => {
     const customer = customers?.find(c => c.id === job.customerId);
