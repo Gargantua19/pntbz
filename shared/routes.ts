@@ -242,6 +242,29 @@ export const api = {
       },
     },
   },
+  customCategories: {
+    list: {
+      method: "GET" as const,
+      path: "/api/custom-categories",
+      responses: {
+        200: z.array(z.object({ id: z.number(), userId: z.number(), type: z.string(), name: z.string() })),
+      },
+    },
+    create: {
+      method: "POST" as const,
+      path: "/api/custom-categories",
+      responses: {
+        201: z.object({ id: z.number(), userId: z.number(), type: z.string(), name: z.string() }),
+      },
+    },
+    delete: {
+      method: "DELETE" as const,
+      path: "/api/custom-categories/:id",
+      responses: {
+        204: z.void(),
+      },
+    },
+  },
   chat: {
     query: {
       method: "POST" as const,
