@@ -179,3 +179,14 @@ export type InsertWorkerDocument = z.infer<typeof insertWorkerDocumentSchema>;
 
 export type CustomerImage = typeof customerImages.$inferSelect;
 export type InsertCustomerImage = z.infer<typeof insertCustomerImageSchema>;
+
+export const customCategories = pgTable("custom_categories", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  type: text("type").notNull(), // "jobs" or "inventory"
+  name: text("name").notNull(),
+});
+
+export type CustomCategory = typeof customCategories.$inferSelect;
+export type InsertCustomCategory = typeof customCategories.$inferInsert;
+export const insertCustomCategorySchema = createInsertSchema(customCategories).omit({ id: true, userId: true });
