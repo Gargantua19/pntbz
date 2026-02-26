@@ -11,7 +11,8 @@ import {
   type JobImage, type InsertJobImage,
   type WorkerDocument, type InsertWorkerDocument,
   type CustomerImage, type InsertCustomerImage,
-  customers, jobs, expenses, inventory, notes, travel, workers, attendance, users, jobImages, workerDocuments, customerImages
+  type CustomCategory,
+  customers, jobs, expenses, inventory, notes, travel, workers, attendance, users, jobImages, workerDocuments, customerImages, customCategories
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
@@ -84,6 +85,12 @@ export interface IStorage {
   getCustomerImages(userId: number, customerId: number): Promise<CustomerImage[]>;
   createCustomerImage(image: InsertCustomerImage, userId: number): Promise<CustomerImage>;
   deleteCustomerImage(id: number, userId: number): Promise<void>;
+
+  // Custom Categories
+  getCustomCategories(userId: number, type: string): Promise<CustomCategory[]>;
+  createCustomCategory(userId: number, type: string, name: string): Promise<CustomCategory>;
+  deleteCustomCategory(id: number, userId: number): Promise<void>;
+
 
   // Backup & Restore
   exportData(userId: number): Promise<any>;
@@ -361,6 +368,22 @@ export class DatabaseStorage implements IStorage {
     await db.delete(customerImages).where(and(eq(customerImages.id, id), eq(customerImages.userId, userId)));
   }
 
+// Custom Categories
+  async getCustomCategories(userId: number, type: string): Promise<CustomCategory[]> {
+    return await db.select().from(customCategories).where(
+      and(eq(customCategories.userId, userId), eq(customCategories.type, type))
+    );
+  }
+  async createCustomCategory(userId: number, type: string, name: string): Promise<CustomCategory> {
+    const [cat] = await db.insert(customCategories).values({ userId, type, name }).returning();
+    return cat;
+  }
+  async deleteCustomCategory(id: number, userId: number): Promise<void> {
+    await db.delete(customCategories).where(
+      and(eq(customCategories.id, id), eq(customCategories.userId, userId))
+    );
+  }
+  
   // Backup & Restore
   async exportData(userId: number): Promise<any> {
     return {
