@@ -1,4 +1,4 @@
-import { useInventory, useCreateInventory, useDeleteInventory, useJobs, useUpdateInventory } from "@/hooks/use-business-data";
+import { useInventory, useCreateInventory, useDeleteInventory, useJobs, useUpdateInventory, useCustomCategories, useCreateCustomCategory } from "@/hooks/use-business-data";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +43,9 @@ export default function InventoryPage() {
   const [search, setSearch] = useState("");
   const [customCategory, setCustomCategory] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
-  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const { data: savedCustomCats } = useCustomCategories("inventory");
+  const addCustomCategory = useCreateCustomCategory();
+  const categories = [...DEFAULT_CATEGORIES, ...(savedCustomCats?.map(c => c.name) || [])];
   const [reassigningItem, setReassigningItem] = useState<InventoryItem | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
 
@@ -165,10 +167,13 @@ export default function InventoryPage() {
 
   const handleAddCustomCategory = () => {
     if (customCategory && !categories.includes(customCategory)) {
-      setCategories(prev => [...prev, customCategory]);
-      form.setValue("category", customCategory);
-      setCustomCategory("");
-      setShowCustomInput(false);
+      addCustomCategory.mutate({ type: "inventory", name: customCategory }, {
+        onSuccess: () => {
+          form.setValue("category", customCategory);
+          setCustomCategory("");
+          setShowCustomInput(false);
+        }
+      });
     }
   };
 
