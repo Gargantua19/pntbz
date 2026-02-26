@@ -595,6 +595,32 @@ export async function registerRoutes(
     }
   });
 
+// Custom Categories
+  app.get("/api/custom-categories", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const userId = (req.user as any).id;
+    const type = req.query.type as string;
+    if (!type) return res.status(400).json({ message: "type is required" });
+    const cats = await storage.getCustomCategories(userId, type);
+    res.json(cats);
+  });
+
+  app.post("/api/custom-categories", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const userId = (req.user as any).id;
+    const { type, name } = req.body;
+    if (!type || !name) return res.status(400).json({ message: "type and name are required" });
+    const cat = await storage.createCustomCategory(userId, type, name);
+    res.status(201).json(cat);
+  });
+
+  app.delete("/api/custom-categories/:id", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const userId = (req.user as any).id;
+    await storage.deleteCustomCategory(parseInt(req.params.id), userId);
+    res.status(204).end();
+  });
+  
   app.post("/api/chat", async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     res.json({ response: "This is a dummy chat response." });
