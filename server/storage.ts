@@ -396,15 +396,21 @@ export class DatabaseStorage implements IStorage {
       workers: await db.select().from(workers).where(eq(workers.userId, userId)),
       attendance: await db.select().from(attendance).where(eq(attendance.userId, userId)),
       jobImages: await db.select().from(jobImages).where(eq(jobImages.userId, userId)),
+      workerDocuments: await db.select().from(workerDocuments).where(eq(workerDocuments.userId, userId)),
+      customerImages: await db.select().from(customerImages).where(eq(customerImages.userId, userId)),
     };
   }
 
   async importData(userId: number, data: any): Promise<void> {
     console.log("Importing data for user...", userId);
-    
+
     await db.transaction(async (tx) => {
-      // 1. Delete existing data for this user in correct dependency order
+
+      // ── STEP 1: Delete all existing data for this user ──
+      // Order matters: child tables must be deleted before parent tables
       await tx.delete(jobImages).where(eq(jobImages.userId, userId));
+      await tx.delete(workerDocuments).where(eq(workerDocuments.userId, userId));
+      await tx.delete(customerImages).where(eq(customerImages.userId, userId));
       await tx.delete(attendance).where(eq(attendance.userId, userId));
       await tx.delete(inventory).where(eq(inventory.userId, userId));
       await tx.delete(travel).where(eq(travel.userId, userId));
@@ -414,63 +420,167 @@ export class DatabaseStorage implements IStorage {
       await tx.delete(jobs).where(eq(jobs.userId, userId));
       await tx.delete(customers).where(eq(customers.userId, userId));
 
-      // 2. Insert new data in correct dependency order (Primary tables first)
-      if (data.customers?.length) {
-        await tx.insert(customers).values(data.customers.map((c: any) => {
-          const { id, ...rest } = c;
-          return { ...rest, userId };
-        }));
+      // ── STEP 2: ID maps ──
+      // When we insert records, the database gives them NEW IDs.
+      // We build a map of oldId → newId so that linked records
+      // (like expenses that belong to a job) use the correct new ID.
+      const customerIdMap = new Map<number, number>();
+      const jobIdMap = new Map<number, number>();
+      const workerIdMap = new Map<number, number>();
+
+      // ── STEP 3: Insert customers (one by one to capture new IDs) ──
+      for (const c of (data.customers || [])) {
+        const { id: oldId, userId: _u, ...rest } = c;
+        const [inserted] = await tx.insert(customers).values({ ...rest, userId }).returning();
+        customerIdMap.set(oldId, inserted.id);
       }
-      if (data.jobs?.length) {
-        await tx.insert(jobs).values(data.jobs.map((j: any) => {
-          const { id, ...rest } = j;
-          return { ...rest, userId };
-        }));
+
+      // ── STEP 4: Insert jobs (one by one to capture new IDs) ──
+      for (const j of (data.jobs || [])) {
+        const { id: oldId, userId: _u, customerId, ...rest } = j;
+        const newCustomerId = customerId ? customerIdMap.get(customerId) ?? null : null;
+        const [inserted] = await tx.insert(jobs).values({
+          ...rest,
+          userId,
+          customerId: newCustomerId,
+        }).returning();
+        jobIdMap.set(oldId, inserted.id);
       }
-      if (data.workers?.length) {
-        await tx.insert(workers).values(data.workers.map((w: any) => {
-          const { id, ...rest } = w;
-          return { ...rest, userId };
-        }));
+
+      // ── STEP 5: Insert workers (one by one to capture new IDs) ──
+      for (const w of (data.workers || [])) {
+        const { id: oldId, userId: _u, jobId, ...rest } = w;
+        const newJobId = jobId ? jobIdMap.get(jobId) ?? null : null;
+        const [inserted] = await tx.insert(workers).values({
+          ...rest,
+          userId,
+          jobId: newJobId,
+        }).returning();
+        workerIdMap.set(oldId, inserted.id);
       }
+
+      // ── STEP 6: Insert expenses (use new jobId) ──
       if (data.expenses?.length) {
-        await tx.insert(expenses).values(data.expenses.map((e: any) => {
-          const { id, ...rest } = e;
-          return { ...rest, userId };
-        }));
+        await tx.insert(expenses).values(
+          data.expenses.map((e: any) => {
+            const { id, userId: _u, jobId, ...rest } = e;
+            return {
+              ...rest,
+              userId,
+              jobId: jobId ? jobIdMap.get(jobId) ?? null : null,
+            };
+          })
+        );
       }
+
+      // ── STEP 7: Insert inventory (use new jobId) ──
       if (data.inventory?.length) {
-        await tx.insert(inventory).values(data.inventory.map((i: any) => {
-          const { id, ...rest } = i;
-          return { ...rest, userId };
-        }));
+        await tx.insert(inventory).values(
+          data.inventory.map((i: any) => {
+            const { id, userId: _u, jobId, assignedToJobId, ...rest } = i;
+            return {
+              ...rest,
+              userId,
+              jobId: jobId ? jobIdMap.get(jobId) ?? null : null,
+              assignedToJobId: assignedToJobId ? jobIdMap.get(assignedToJobId) ?? null : null,
+            };
+          })
+        );
       }
+
+      // ── STEP 8: Insert notes (use new referenceId based on section) ──
       if (data.notes?.length) {
-        await tx.insert(notes).values(data.notes.map((n: any) => {
-          const { id, ...rest } = n;
-          return { ...rest, userId };
-        }));
+        await tx.insert(notes).values(
+          data.notes.map((n: any) => {
+            const { id, userId: _u, referenceId, ...rest } = n;
+            let newReferenceId: number | null = null;
+            if (referenceId) {
+              if (rest.section === 'jobs' || rest.section === 'workers_attendance') {
+                newReferenceId = jobIdMap.get(referenceId) ?? null;
+              } else if (rest.section === 'customers') {
+                newReferenceId = customerIdMap.get(referenceId) ?? null;
+              } else if (rest.section === 'workers') {
+                newReferenceId = workerIdMap.get(referenceId) ?? null;
+              } else {
+                newReferenceId = null; // expenses, inventory, travel notes lose their link (safe)
+              }
+            }
+            return { ...rest, userId, referenceId: newReferenceId };
+          })
+        );
       }
+
+      // ── STEP 9: Insert travel (use new jobId) ──
       if (data.travel?.length) {
-        await tx.insert(travel).values(data.travel.map((t: any) => {
-          const { id, ...rest } = t;
-          return { ...rest, userId };
-        }));
+        await tx.insert(travel).values(
+          data.travel.map((t: any) => {
+            const { id, userId: _u, jobId, ...rest } = t;
+            return {
+              ...rest,
+              userId,
+              jobId: jobId ? jobIdMap.get(jobId) ?? null : null,
+            };
+          })
+        );
       }
+
+      // ── STEP 10: Insert attendance (use new workerId and jobId) ──
       if (data.attendance?.length) {
-        await tx.insert(attendance).values(data.attendance.map((a: any) => {
-          const { id, ...rest } = a;
-          return { ...rest, userId };
-        }));
+        await tx.insert(attendance).values(
+          data.attendance.map((a: any) => {
+            const { id, userId: _u, workerId, jobId, ...rest } = a;
+            return {
+              ...rest,
+              userId,
+              workerId: workerId ? workerIdMap.get(workerId) ?? null : null,
+              jobId: jobId ? jobIdMap.get(jobId) ?? null : null,
+            };
+          })
+        );
       }
+
+      // ── STEP 11: Insert job images (use new jobId) ──
       if (data.jobImages?.length) {
-        await tx.insert(jobImages).values(data.jobImages.map((ji: any) => {
-          const { id, ...rest } = ji;
-          return { ...rest, userId };
-        }));
+        await tx.insert(jobImages).values(
+          data.jobImages.map((ji: any) => {
+            const { id, userId: _u, jobId, ...rest } = ji;
+            return {
+              ...rest,
+              userId,
+              jobId: jobId ? jobIdMap.get(jobId) ?? null : null,
+            };
+          })
+        );
       }
+
+      // ── STEP 12: Insert worker documents (use new workerId) ──
+      if (data.workerDocuments?.length) {
+        await tx.insert(workerDocuments).values(
+          data.workerDocuments.map((wd: any) => {
+            const { id, userId: _u, workerId, ...rest } = wd;
+            return {
+              ...rest,
+              userId,
+              workerId: workerId ? workerIdMap.get(workerId) ?? null : null,
+            };
+          })
+        );
+      }
+
+      // ── STEP 13: Insert customer images (use new customerId) ──
+      if (data.customerImages?.length) {
+        await tx.insert(customerImages).values(
+          data.customerImages.map((ci: any) => {
+            const { id, userId: _u, customerId, ...rest } = ci;
+            return {
+              ...rest,
+              userId,
+              customerId: customerId ? customerIdMap.get(customerId) ?? null : null,
+            };
+          })
+        );
+      }
+
     });
   }
-}
-
 export const storage = new DatabaseStorage();
