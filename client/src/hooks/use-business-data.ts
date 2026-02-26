@@ -493,3 +493,34 @@ export function useDeleteNote() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [api.notes.list.path] }),
   });
 }
+
+// === CUSTOM CATEGORIES ===
+export function useCustomCategories(type: "jobs" | "inventory") {
+  return useQuery({
+    queryKey: ["/api/custom-categories", type],
+    queryFn: async () => {
+      const res = await fetch(`/api/custom-categories?type=${type}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch custom categories");
+      return res.json() as Promise<{ id: number; userId: number; type: string; name: string }[]>;
+    },
+  });
+}
+
+export function useCreateCustomCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ type, name }: { type: "jobs" | "inventory"; name: string }) => {
+      const res = await fetch("/api/custom-categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, name }),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to save custom category");
+      return res.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/custom-categories", variables.type] });
+    },
+  });
+}
