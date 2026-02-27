@@ -151,14 +151,19 @@ export class DatabaseStorage implements IStorage {
     const year = now.getFullYear();
     const dateStr = `${day}${month}${year}`;
     const categoryInitial = (insertJob.category?.[0] || 'X').toUpperCase();
-    
+
+    // Count only THIS user's jobs to get the correct job number
+    const existingJobs = await db.select().from(jobs).where(eq(jobs.userId, userId));
+    const jobNumber = existingJobs.length + 1;
+
     const [job] = await db.insert(jobs).values({
       ...insertJob,
       userId,
       agreedAmount: insertJob.agreedAmount || insertJob.quotedAmount
     }).returning();
 
-    const jobId = `#${job.id}${categoryInitial}${dateStr}`;
+    // Formula: N (user's job count) + C (category initial) + D (DDMMYYYY)
+    const jobId = `${jobNumber}${categoryInitial}${dateStr}`;
     const [updatedJob] = await db.update(jobs)
       .set({ jobId })
       .where(eq(jobs.id, job.id))
