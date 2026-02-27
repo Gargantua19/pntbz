@@ -336,7 +336,7 @@ export default function Dashboard() {
               className="h-20 flex flex-col gap-2" 
               onClick={async () => {
                 try {
-                  const response = await fetch('/api/backup', { credentials: 'include' });;
+                  const response = await fetch('/api/backup', { credentials: 'include' });
                   const data = await response.json();
                   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
                   const url = window.URL.createObjectURL(blob);
