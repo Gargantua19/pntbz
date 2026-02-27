@@ -367,6 +367,12 @@ export default function Dashboard() {
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
+                  
+                  if (!window.confirm('WARNING: This will permanently delete ALL current data in this account and replace it with the backup. This cannot be undone. Continue?')) {
+                    e.target.value = '';
+                    return;
+                  }
+                
                   const reader = new FileReader();
                   reader.onload = async (event) => {
                     try {
@@ -375,16 +381,23 @@ export default function Dashboard() {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(data),
-                        credentials: 'include'
+                        credentials: 'include',
                       });
                       if (response.ok) {
                         alert('Data restored successfully! The page will reload.');
                         window.location.reload();
                       } else {
-                        alert('Restore failed');
+                        let errorMessage = 'Restore failed';
+                        try {
+                          const errorData = await response.json();
+                          errorMessage = `Restore failed (${response.status}): ${errorData.message || 'Unknown error'}`;
+                        } catch {
+                          errorMessage = `Restore failed with status: ${response.status}`;
+                        }
+                        alert(errorMessage);
                       }
-                    } catch (error) {
-                      alert('Invalid backup file');
+                    } catch (error: any) {
+                      alert('Error: ' + (error?.message || 'Invalid backup file or network error'));
                     }
                   };
                   reader.readAsText(file);
