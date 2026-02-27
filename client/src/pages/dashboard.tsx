@@ -336,7 +336,7 @@ export default function Dashboard() {
               className="h-20 flex flex-col gap-2" 
               onClick={async () => {
                 try {
-                  const response = await fetch('/api/backup');
+                  const response = await fetch('/api/backup', { credentials: 'include' });;
                   const data = await response.json();
                   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
                   const url = window.URL.createObjectURL(blob);
@@ -374,7 +374,8 @@ export default function Dashboard() {
                       const response = await fetch('/api/restore', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(data)
+                        body: JSON.stringify(data),
+                        credentials: 'include'
                       });
                       if (response.ok) {
                         alert('Data restored successfully! The page will reload.');
