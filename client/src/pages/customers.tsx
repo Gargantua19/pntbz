@@ -517,15 +517,19 @@ function CustomerDetailsView({ id, onBack }: { id: number, onBack: () => void })
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-500">Manpower</span>
-                    <span className="font-mono">₹{details.stats.totalManpower.toLocaleString()}</span>
+                    <span className="font-mono">₹{Number(details.stats.totalManpower || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Expenses</span>
-                    <span className="font-mono">₹{details.stats.totalExpenses.toLocaleString()}</span>
+                    <span className="text-slate-500">Inventory</span>
+                    <span className="font-mono">₹{Number(details.stats.totalInventory || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Travel</span>
+                    <span className="font-mono">₹{Number(details.stats.totalTravel || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-100">
                     <span>Total Costs</span>
-                    <span className="text-red-600">-₹{(details.stats.totalManpower + details.stats.totalExpenses + details.stats.totalTravel).toLocaleString()}</span>
+                    <span className="text-red-600">-₹{(Number(details.stats.totalManpower || 0) + Number(details.stats.totalInventory || 0) + Number(details.stats.totalTravel || 0)).toLocaleString()}</span>
                   </div>
                 </div>
               </CardContent>
