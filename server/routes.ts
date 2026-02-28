@@ -205,8 +205,8 @@ export async function registerRoutes(
 
     const totalAgreed = customerJobs.reduce((acc, j) => acc + Number(j.agreedAmount || 0), 0);
     const totalPaid = customerJobs.reduce((acc, j) => acc + Number(j.paidAmount || 0), 0);
-    const totalExpenses = customerExpenses.reduce((acc, e) => acc + Number(e.amount), 0);
     const totalTravel = customerTravel.reduce((acc, t) => acc + Number(t.fuelCost), 0);
+    const totalInventory = customerInventory.reduce((acc, i) => acc + (Number(i.quantity) * Number(i.costPerUnit)), 0);
 
     res.json({
       customer,
@@ -216,10 +216,10 @@ export async function registerRoutes(
       stats: {
         totalAgreed,
         totalPaid,
-        totalExpenses: totalExpenses + laborTotal,
-        totalTravel,
         totalManpower: laborTotal,
-        netProfit: totalPaid - (totalExpenses + laborTotal) - totalTravel
+        totalInventory,
+        totalTravel,
+        netProfit: totalPaid - laborTotal - totalInventory - totalTravel
       }
     });
   });
