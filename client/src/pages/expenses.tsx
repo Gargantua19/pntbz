@@ -1,3 +1,4 @@
+import { cn, formatDate } from "@/lib/utils";
 import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense, useJobs, useWorkers, useAttendance, useTravel, useInventory } from "@/hooks/use-business-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -783,7 +784,7 @@ export default function ExpensesPage() {
                   <TableRow><TableCell colSpan={9} className="text-center py-8">No expenses found</TableCell></TableRow>
                 ) : sortedExpenses.map((expense) => (
                   <TableRow key={expense.id}>
-                    <TableCell className="text-slate-500 font-mono text-xs">{expense.date}</TableCell>
+                    <TableCell className="text-slate-500 font-mono text-xs">{formatDate(expense.date)}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={
                         expense.category.includes("Worker") || expense.category === "Salary" ? "text-blue-600 border-blue-200 bg-blue-50" :
