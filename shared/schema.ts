@@ -50,6 +50,7 @@ export const inventory = pgTable("inventory", {
   unit: text("unit").notNull(),
   costPerUnit: numeric("cost_per_unit").notNull(),
   assignedToJobId: integer("assigned_to_job_id").references(() => jobs.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const notes = pgTable("notes", {
