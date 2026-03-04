@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/utils";
 import { useNotes, useCreateNote, useUpdateNote, useDeleteNote, useJobs, useCustomers, useExpenses, useInventory, useWorkers, useTravel } from "@/hooks/use-business-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -236,7 +237,7 @@ export default function NotesPage() {
           <div className="text-right">
             <div className="flex items-center gap-1 text-[10px] text-slate-400">
               <Calendar className="h-3 w-3" />
-              {format(new Date(note.createdAt), "MMM d, yyyy")}
+              {formatDate(note.createdAt)}
             </div>
             <div className="flex items-center gap-1 text-[10px] text-slate-400">
               <Clock className="h-3 w-3" />
