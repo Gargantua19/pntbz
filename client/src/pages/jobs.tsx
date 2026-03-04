@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/utils";
 import { useJobs, useCreateJob, useUpdateJob, useDeleteJob, useCustomers, useCustomCategories, useCreateCustomCategory } from "@/hooks/use-business-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -670,11 +671,11 @@ export default function JobsPage() {
               <div className="grid grid-cols-2 gap-4 pt-2 border-t">
                 <div>
                   <p className="text-sm font-medium text-slate-500">Start Date</p>
-                  <p className="text-sm">{viewingJob?.startDate || '-'}</p>
+                  <p className="text-sm">{formatDate(viewingJob?.startDate)}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-slate-500">End Date</p>
-                  <p className="text-sm">{viewingJob?.endDate || '-'}</p>
+                  <p className="text-sm">{formatDate(viewingJob?.endDate)}</p>
                 </div>
               </div>
 
