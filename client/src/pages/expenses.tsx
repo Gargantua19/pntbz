@@ -234,7 +234,7 @@ export default function ExpensesPage() {
   const inventoryExpenses = inventory
     .map(i => ({
       id: `inv-${i.id}`,
-      date: format(new Date(), "yyyy-MM-dd"), 
+      date: i.createdAt ? format(new Date(i.createdAt), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"), 
       category: "Inventory Purchase",
       description: `${i.name} (${i.quantity} ${i.unit})`,
       amount: String(Number(i.quantity) * Number(i.costPerUnit)),
