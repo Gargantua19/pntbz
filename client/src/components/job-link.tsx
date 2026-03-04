@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/utils";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -84,7 +85,7 @@ export function JobLink({ jobId, displayText, className = "" }: JobLinkProps) {
                   <Calendar className="h-4 w-4 mt-0.5 text-slate-400" />
                   <div>
                     <label className="text-xs font-medium text-slate-400 uppercase">Start Date</label>
-                    <p className="text-slate-700">{job.startDate}</p>
+                    <p className="text-slate-700">{formatDate(job.startDate)}</p>
                   </div>
                 </div>
               )}
@@ -93,7 +94,7 @@ export function JobLink({ jobId, displayText, className = "" }: JobLinkProps) {
                   <Calendar className="h-4 w-4 mt-0.5 text-slate-400" />
                   <div>
                     <label className="text-xs font-medium text-slate-400 uppercase">End Date</label>
-                    <p className="text-slate-700">{job.endDate}</p>
+                    <p className="text-slate-700">{formatDate(job.endDate)}</p>
                   </div>
                 </div>
               )}
