@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/utils";
 import { useTravel, useCreateTravel, useJobs } from "@/hooks/use-business-data";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -163,7 +164,7 @@ export default function TravelPage() {
                   <tr><td colSpan={4} className="text-center py-8">No logs found</td></tr>
                 ) : sortedTravel?.map((item) => (
                   <tr key={item.id}>
-                    <td className="font-mono text-slate-500">{item.date}</td>
+                    <td className="font-mono text-slate-500">{formatDate(item.date)}</td>
                     <td className="text-xs text-slate-400">
                       {item.jobId ? <JobLink jobId={item.jobId} /> : '-'}
                     </td>
