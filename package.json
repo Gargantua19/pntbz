@@ -74,6 +74,7 @@
     "wouter": "^3.9.0",
     "ws": "^8.19.0",
     "zod": "^3.25.76",
+    "@supabase/supabase-js": "^2.39.0",
     "zod-validation-error": "^3.5.4"
   },
   "devDependencies": {
