@@ -14,10 +14,9 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import multer from "multer";
-import path from "path";
-import fs from "fs";
 import pgSession from "connect-pg-simple";
 import { pool } from "./db";
+import { uploadToSupabase, deleteFromSupabase } from "./supabase";
 
 const PostgresSessionStore = pgSession(session);
 const scryptAsync = promisify(scrypt);
@@ -35,22 +34,8 @@ async function comparePassword(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
-const storage_multer = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = "uploads";
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir);
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  },
-});
-
 const upload = multer({
-  storage: storage_multer,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|webp/;
@@ -484,7 +469,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "No image file provided" });
       }
       const jobId = parseInt(req.params.id);
-      const url = `/uploads/${req.file.filename}`;
+      const url = await uploadToSupabase(req.file.buffer, req.file.originalname, req.file.mimetype);
       const image = await storage.createJobImage({ 
         jobId, 
         url, 
@@ -499,7 +484,11 @@ export async function registerRoutes(
   app.delete("/api/images/:id", async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     const userId = (req.user as any).id;
-    await storage.deleteJobImage(parseInt(req.params.id), userId);
+    const id = parseInt(req.params.id);
+    const images = await storage.getJobImages(userId);
+    const image = images.find(i => i.id === id);
+    if (image) await deleteFromSupabase(image.url);
+    await storage.deleteJobImage(id, userId);
     res.status(204).end();
   });
 
@@ -520,7 +509,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "No document file provided" });
       }
       const workerId = parseInt(req.params.id);
-      const url = `/uploads/${req.file.filename}`;
+      const url = await uploadToSupabase(req.file.buffer, req.file.originalname, req.file.mimetype);
       const doc = await storage.createWorkerDocument({ 
         workerId, 
         url, 
@@ -535,7 +524,11 @@ export async function registerRoutes(
   app.delete("/api/worker-documents/:id", async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     const userId = (req.user as any).id;
-    await storage.deleteWorkerDocument(parseInt(req.params.id), userId);
+    const id = parseInt(req.params.id);
+    const docs = await storage.getWorkerDocuments(userId, parseInt(req.params.id));
+    const doc = docs.find(d => d.id === id);
+    if (doc) await deleteFromSupabase(doc.url);
+    await storage.deleteWorkerDocument(id, userId);
     res.status(204).end();
   });
 
@@ -556,7 +549,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "No image file provided" });
       }
       const customerId = parseInt(req.params.id);
-      const url = `/uploads/${req.file.filename}`;
+      const url = await uploadToSupabase(req.file.buffer, req.file.originalname, req.file.mimetype);
       const image = await storage.createCustomerImage({ 
         customerId, 
         url, 
@@ -571,7 +564,11 @@ export async function registerRoutes(
   app.delete("/api/customer-images/:id", async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     const userId = (req.user as any).id;
-    await storage.deleteCustomerImage(parseInt(req.params.id), userId);
+    const id = parseInt(req.params.id);
+    const allImages = await storage.getCustomerImages(userId, parseInt(req.params.id));
+    const image = allImages.find(i => i.id === id);
+    if (image) await deleteFromSupabase(image.url);
+    await storage.deleteCustomerImage(id, userId);
     res.status(204).end();
   });
 
