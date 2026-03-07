@@ -14,6 +14,7 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import multer from "multer";
+import path from "path";
 import pgSession from "connect-pg-simple";
 import { pool } from "./db";
 import { uploadToSupabase, deleteFromSupabase } from "./supabase";
