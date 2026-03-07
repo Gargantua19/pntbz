@@ -481,7 +481,8 @@ export class DatabaseStorage implements IStorage {
       }
 
       // STEP 6: Inventory
-      const { id, userId: _u, jobId, assignedToJobId, createdAt, ...rest } = i;
+      for (const i of (data.inventory || [])) {
+        const { id, userId: _u, jobId, assignedToJobId, createdAt, ...rest } = i;
         await tx.insert(inventory).values({
           ...rest,
           userId,
