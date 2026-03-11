@@ -323,6 +323,23 @@ export async function registerRoutes(
     res.json(item);
   });
 
+  app.patch("/api/inventory/:id/mark-used", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const userId = (req.user as any).id;
+    const id = parseInt(req.params.id);
+    const item = await storage.getInventoryItem(id, userId);
+    if (!item) return res.status(404).json({ message: "Item not found" });
+    const updated = await storage.updateInventory(id, userId, { isUsed: true });
+    await storage.createNote({
+      type: "log",
+      section: "inventory",
+      referenceId: id,
+      attribute: "status",
+      content: `Inventory item "${item.name}" (${item.quantity} ${item.unit}) marked as Used. Was assigned to Job ID: ${item.assignedToJobId || "General Inventory"}.`
+    }, userId);
+    res.json(updated);
+  });
+  
   app.delete("/api/inventory/:id", async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     const userId = (req.user as any).id;
