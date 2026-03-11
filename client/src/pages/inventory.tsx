@@ -1,4 +1,4 @@
-import { useInventory, useCreateInventory, useDeleteInventory, useJobs, useUpdateInventory, useCustomCategories, useCreateCustomCategory } from "@/hooks/use-business-data";
+import { useInventory, useCreateInventory, useUpdateInventory, useDeleteInventory, useMarkInventoryUsed, useJobs } from "@/hooks/use-business-data";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,7 @@ export default function InventoryPage() {
   const { data: jobs } = useJobs();
   const createItem = useCreateInventory();
   const deleteItem = useDeleteInventory();
+  const markUsed = useMarkInventoryUsed();
   const updateItem = useUpdateInventory();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -358,7 +359,14 @@ export default function InventoryPage() {
                   <tr><td colSpan={6} className="text-center py-8">No items found</td></tr>
                 ) : sortedInventory?.map((item) => (
                   <tr key={item.id}>
-                    <td className="font-medium">{item.name}</td>
+                    <td className="font-medium">
+                      {item.name}
+                      {item.isUsed && (
+                        <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 border border-green-200">
+                          USED
+                        </span>
+                      )}
+                    </td>
                     <td>
                       <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700">
                         {item.category}
@@ -387,34 +395,50 @@ export default function InventoryPage() {
                         >
                           View
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(item)}
-                          className="h-8 px-2 text-xs"
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setReassigningItem(item)}
-                          className="h-8 px-2 text-xs"
-                        >
-                          <ArrowRightLeft className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-8 px-2 text-xs text-slate-400 hover:text-red-600"
-                          onClick={() => {
-                            if (window.confirm("Are you sure you want to delete this inventory item?")) {
-                              deleteItem.mutate(item.id);
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {!item.isUsed && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(item)}
+                              className="h-8 px-2 text-xs"
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setReassigningItem(item)}
+                              className="h-8 px-2 text-xs"
+                            >
+                              <ArrowRightLeft className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2 text-xs text-orange-500 hover:text-orange-700"
+                              onClick={() => {
+                                if (window.confirm(`Mark "${item.name}" as used? This cannot be undone.`)) {
+                                  markUsed.mutate(item.id);
+                                }
+                              }}
+                            >
+                              Mark Used
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2 text-xs text-slate-400 hover:text-red-600"
+                              onClick={() => {
+                                if (window.confirm("Are you sure you want to delete this inventory item?")) {
+                                  deleteItem.mutate(item.id);
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
