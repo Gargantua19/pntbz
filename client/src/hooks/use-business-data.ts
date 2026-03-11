@@ -193,6 +193,24 @@ export function useDeleteInventory() {
   });
 }
 
+export function useMarkInventoryUsed() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/inventory/${id}/mark-used`, {
+        method: "PATCH",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to mark item as used");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
+    },
+  });
+}
+
 // === EXPENSES ===
 export function useExpenses() {
   return useQuery({
