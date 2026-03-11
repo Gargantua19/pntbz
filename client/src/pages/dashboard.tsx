@@ -121,8 +121,8 @@ export default function Dashboard() {
   const totalExpensesValue = directExpenses + travelCosts + laborCosts + jobInventoryCosts;
   const netProfit = totalRevenue - totalExpensesValue;
   
-  const deployedQuantity = inventory?.filter(i => i.assignedToJobId !== null).reduce((acc, i) => acc + Number(i.quantity), 0) || 0;
-  const generalQuantity = inventory?.filter(i => i.assignedToJobId === null).reduce((acc, i) => acc + Number(i.quantity), 0) || 0;
+  const deployedQuantity = inventory?.filter(i => i.assignedToJobId !== null && !i.isUsed).reduce((acc, i) => acc + Number(i.quantity), 0) || 0;
+  const generalQuantity = inventory?.filter(i => i.assignedToJobId === null && !i.isUsed).reduce((acc, i) => acc + Number(i.quantity), 0) || 0;
 
   // Chart Data
   const chartData = [
