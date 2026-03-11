@@ -9,7 +9,7 @@ import { Plus, Search, Trash2, ArrowRightLeft } from "lucide-react";
 import { JobLink } from "@/components/job-link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertInventorySchema, type InventoryItem, type Job } from "@shared/schema";
+import { insertInventorySchema, type InventoryItem } from "@shared/schema";
 import { useState } from "react";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
@@ -22,7 +22,6 @@ const DEFAULT_CATEGORIES = [
   "Misc",
 ];
 
-// Helper for decimal coercion
 const formSchema = insertInventorySchema.extend({
   quantity: z.coerce.number(),
   costPerUnit: z.coerce.number(),
@@ -45,8 +44,8 @@ export default function InventoryPage() {
   const [customCategory, setCustomCategory] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
   const { data: savedCustomCats } = useCustomCategories("inventory");
-  const addCustomCategory = useCreateCustomCategory();
-  const categories = [...DEFAULT_CATEGORIES, ...(savedCustomCats?.map(c => c.name) || [])];
+  const addCustomCategory = useAddCategory();
+  const categories = [...DEFAULT_CATEGORIES, ...(savedCustomCats || []).filter((c: string) => !DEFAULT_CATEGORIES.includes(c))];
   const [reassigningItem, setReassigningItem] = useState<InventoryItem | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
 
@@ -125,7 +124,7 @@ export default function InventoryPage() {
 
   const executeReassign = () => {
     if (!reassigningItem) return;
-    
+
     if (reassignType === 'full' || (reassignType === 'partial' && reassignQuantity === Number(reassigningItem.quantity))) {
       updateItem.mutate({ id: reassigningItem.id, assignedToJobId: reassignJobId }, {
         onSuccess: () => {
@@ -141,7 +140,6 @@ export default function InventoryPage() {
         return;
       }
 
-      // Create new partial item
       createItem.mutate({
         name: reassigningItem.name,
         category: reassigningItem.category,
@@ -151,7 +149,6 @@ export default function InventoryPage() {
         assignedToJobId: reassignJobId,
       }, {
         onSuccess: () => {
-          // Update original item
           const newQty = Number(reassigningItem.quantity) - reassignQuantity;
           updateItem.mutate({ id: reassigningItem.id, quantity: newQty.toString() }, {
             onSuccess: () => {
@@ -178,8 +175,8 @@ export default function InventoryPage() {
     }
   };
 
-  const filteredInventory = inventory?.filter(item => 
-    item.name.toLowerCase().includes(search.toLowerCase()) || 
+  const filteredInventory = inventory?.filter(item =>
+    item.name.toLowerCase().includes(search.toLowerCase()) ||
     item.category.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -187,7 +184,7 @@ export default function InventoryPage() {
     if (!sortConfig) return 0;
     let aValue: any = (a as any)[sortConfig.key];
     let bValue: any = (b as any)[sortConfig.key];
-    
+
     if (sortConfig.key === 'costPerUnit' || sortConfig.key === 'quantity') {
       aValue = Number(aValue);
       bValue = Number(bValue);
@@ -213,7 +210,14 @@ export default function InventoryPage() {
           <h2 className="text-3xl font-bold tracking-tight text-slate-900">Inventory</h2>
           <p className="text-slate-500">Track paints, tools, and supplies.</p>
         </div>
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog open={isOpen} onOpenChange={(open) => {
+          setIsOpen(open);
+          if (!open) {
+            setEditingItem(null);
+            setIsViewing(false);
+            form.reset();
+          }
+        }}>
           <DialogTrigger asChild>
             <Button className="shadow-sm">
               <Plus className="h-4 w-4 mr-2" />
@@ -222,14 +226,14 @@ export default function InventoryPage() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Inventory Item</DialogTitle>
+              <DialogTitle>{isViewing ? "View Item" : editingItem ? "Edit Item" : "Add Inventory Item"}</DialogTitle>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField control={form.control} name="name" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Item Name</FormLabel>
-                    <FormControl><Input placeholder="Asian Paints Royale..." {...field} /></FormControl>
+                    <FormControl><Input placeholder="Asian Paints Royale..." {...field} disabled={isViewing} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -238,29 +242,31 @@ export default function InventoryPage() {
                     <FormItem>
                       <FormLabel>Category</FormLabel>
                       <div className="space-y-2">
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value} disabled={isViewing}>
                           <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                           <SelectContent>
                             {categories.map(cat => (
                               <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                             ))}
-                            <Button 
-                              variant="ghost" 
-                              className="w-full justify-start font-normal text-primary px-2"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                setShowCustomInput(true);
-                              }}
-                            >
-                              <Plus className="h-4 w-4 mr-2" />
-                              Custom Category...
-                            </Button>
+                            {!isViewing && (
+                              <Button
+                                variant="ghost"
+                                className="w-full justify-start font-normal text-primary px-2"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setShowCustomInput(true);
+                                }}
+                              >
+                                <Plus className="h-4 w-4 mr-2" />
+                                Custom Category...
+                              </Button>
+                            )}
                           </SelectContent>
                         </Select>
                         {showCustomInput && (
                           <div className="flex gap-2">
-                            <Input 
-                              placeholder="New category..." 
+                            <Input
+                              placeholder="New category..."
                               value={customCategory}
                               onChange={(e) => setCustomCategory(e.target.value)}
                               className="h-8"
@@ -276,7 +282,7 @@ export default function InventoryPage() {
                   <FormField control={form.control} name="unit" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Unit</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isViewing}>
                         <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                         <SelectContent>
                           <SelectItem value="liters">Liters</SelectItem>
@@ -293,14 +299,14 @@ export default function InventoryPage() {
                   <FormField control={form.control} name="quantity" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Quantity</FormLabel>
-                      <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                      <FormControl><Input type="number" step="0.01" {...field} disabled={isViewing} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="costPerUnit" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Cost per Unit (₹)</FormLabel>
-                      <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                      <FormControl><Input type="number" step="0.01" {...field} disabled={isViewing} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
@@ -308,7 +314,7 @@ export default function InventoryPage() {
                 <FormField control={form.control} name="assignedToJobId" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Assign to Job (Optional)</FormLabel>
-                    <Select onValueChange={(val) => field.onChange(val === "none" ? null : Number(val))} value={field.value?.toString() || "none"}>
+                    <Select onValueChange={(val) => field.onChange(val === "none" ? null : Number(val))} value={field.value?.toString() || "none"} disabled={isViewing}>
                       <FormControl><SelectTrigger><SelectValue placeholder="Select job" /></SelectTrigger></FormControl>
                       <SelectContent>
                         <SelectItem value="none">General Inventory</SelectItem>
@@ -320,7 +326,11 @@ export default function InventoryPage() {
                     <FormMessage />
                   </FormItem>
                 )} />
-                <Button type="submit" className="w-full" disabled={createItem.isPending}>Add Item</Button>
+                {!isViewing && (
+                  <Button type="submit" className="w-full" disabled={createItem.isPending || updateItem.isPending}>
+                    {editingItem ? "Save Changes" : "Add Item"}
+                  </Button>
+                )}
               </form>
             </Form>
           </DialogContent>
@@ -331,8 +341,8 @@ export default function InventoryPage() {
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Search className="h-4 w-4 text-slate-400" />
-            <Input 
-              placeholder="Search items..." 
+            <Input
+              placeholder="Search items..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="max-w-xs border-0 bg-slate-50 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-slate-400"
@@ -358,7 +368,7 @@ export default function InventoryPage() {
                 ) : sortedInventory?.length === 0 ? (
                   <tr><td colSpan={6} className="text-center py-8">No items found</td></tr>
                 ) : sortedInventory?.map((item) => (
-                  <tr key={item.id}>
+                  <tr key={item.id} className={item.isUsed ? "opacity-60 bg-slate-50" : ""}>
                     <td className="font-medium">
                       {item.name}
                       {item.isUsed && (
@@ -372,7 +382,7 @@ export default function InventoryPage() {
                         {item.category}
                       </span>
                     </td>
-                    <td className={`font-mono ${Number(item.quantity) < 10 ? 'text-red-600 font-bold' : ''}`}>
+                    <td className={`font-mono ${!item.isUsed && Number(item.quantity) < 10 ? 'text-red-600 font-bold' : ''}`}>
                       {Number(item.quantity).toFixed(2)} {item.unit}
                     </td>
                     <td>
@@ -467,7 +477,7 @@ export default function InventoryPage() {
               <br />
               Available Quantity: {reassigningItem?.quantity} {reassigningItem?.unit}
             </p>
-            
+
             {!reassignType ? (
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -486,19 +496,19 @@ export default function InventoryPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="flex gap-2">
-                  <Button 
-                    className="flex-1" 
-                    variant="outline" 
+                  <Button
+                    className="flex-1"
+                    variant="outline"
                     onClick={() => setReassignType('full')}
                     disabled={reassignJobId === undefined && reassigningItem?.assignedToJobId === null}
                   >
                     Full Quantity
                   </Button>
-                  <Button 
-                    className="flex-1" 
-                    variant="outline" 
+                  <Button
+                    className="flex-1"
+                    variant="outline"
                     onClick={() => {
                       setReassignType('partial');
                       setReassignQuantity(Number(reassigningItem?.quantity));
@@ -513,10 +523,10 @@ export default function InventoryPage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Quantity to Reassign</label>
-                  <Input 
-                    type="number" 
-                    step="0.01" 
-                    value={reassignQuantity} 
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={reassignQuantity}
                     onChange={(e) => setReassignQuantity(Number(e.target.value))}
                     max={Number(reassigningItem?.quantity)}
                     min={0.01}
