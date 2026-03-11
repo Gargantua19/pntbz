@@ -542,3 +542,58 @@ export function useCreateCustomCategory() {
     },
   });
 }
+
+// === CUSTOM CATEGORIES ===
+const INVENTORY_DEFAULT_CATEGORIES = ["Paint", "Putty", "Tools", "Wallpaper", "Misc"];
+
+export function useCustomCategories(type: "jobs" | "inventory") {
+  const defaults = type === "inventory" ? INVENTORY_DEFAULT_CATEGORIES : [];
+  return useQuery({
+    queryKey: ["/api/custom-categories", type],
+    queryFn: async () => {
+      const res = await fetch(`/api/custom-categories?type=${type}`, { credentials: "include" });
+      if (!res.ok) return defaults;
+      const custom: string[] = await res.json();
+      const all = [...defaults];
+      custom.forEach((c: string) => { if (!all.includes(c)) all.push(c); });
+      return all;
+    },
+  });
+}
+
+export function useAddCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ type, name }: { type: "jobs" | "inventory"; name: string }) => {
+      const res = await fetch("/api/custom-categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, name }),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to add category");
+    },
+    onSuccess: (_: any, variables: { type: string; name: string }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/custom-categories", variables.type] });
+    },
+  });
+}
+
+// === MARK INVENTORY USED ===
+export function useMarkInventoryUsed() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/inventory/${id}/mark-used`, {
+        method: "PATCH",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to mark item as used");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
+    },
+  });
+}
