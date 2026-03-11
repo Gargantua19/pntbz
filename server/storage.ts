@@ -45,6 +45,7 @@ export interface IStorage {
 
   // Inventory
   getInventory(userId: number): Promise<InventoryItem[]>;
+  getInventoryItem(id: number, userId: number): Promise<InventoryItem | undefined>;
   createInventory(item: InsertInventory, userId: number): Promise<InventoryItem>;
   updateInventory(id: number, userId: number, item: Partial<InsertInventory>): Promise<InventoryItem>;
   deleteInventory(id: number, userId: number): Promise<void>;
@@ -206,6 +207,10 @@ export class DatabaseStorage implements IStorage {
   // Inventory
   async getInventory(userId: number): Promise<InventoryItem[]> {
     return await db.select().from(inventory).where(eq(inventory.userId, userId));
+  }
+  async getInventoryItem(id: number, userId: number): Promise<InventoryItem | undefined> {
+    const [item] = await db.select().from(inventory).where(and(eq(inventory.id, id), eq(inventory.userId, userId)));
+    return item;
   }
   async createInventory(insertItem: InsertInventory, userId: number): Promise<InventoryItem> {
     const [item] = await db.insert(inventory).values({ ...insertItem, userId }).returning();
