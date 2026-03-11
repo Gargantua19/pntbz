@@ -1,4 +1,4 @@
-import { useInventory, useCreateInventory, useUpdateInventory, useDeleteInventory, useMarkInventoryUsed, useJobs } from "@/hooks/use-business-data";
+import { useInventory, useCreateInventory, useUpdateInventory, useDeleteInventory, useMarkInventoryUsed, useCustomCategories, useAddCategory, useJobs } from "@/hooks/use-business-data";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
